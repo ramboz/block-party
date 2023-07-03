@@ -68,14 +68,13 @@ class AriaAccordion extends AriaWidget {
           ev.preventDefault();
         }
         this.toggleItem(details, !details.open);
-      } else if (button && button.dataset.role === 'expand') {
+      } else if (button) {
         this.querySelectorAll('details').forEach((details) => {
-          details.open = true;
-          this.toggleItem(details, true);
-        });
-      } else if (button && button.dataset.role === 'collapse') {
-        this.querySelectorAll('details').forEach((details) => {
-          this.toggleItem(details, false);
+          const open = button.dataset.role === 'expand';
+          if (open) {
+            details.open = true;
+          }
+          this.toggleItem(details, open);
         });
       }
     };
@@ -157,18 +156,12 @@ class AriaAccordion extends AriaWidget {
     item.closest('details').remove();
   }
 
-  focusItem(item) {
-    item.closest('details').querySelector('summary').focus();
-  }
-
   async toggleItem(item, state) {
     if (this._single && state) {
       this.querySelectorAll('details[open]').forEach((details) => {
         this.toggleItem(details, false);
       });
     }
-
-    this.focusItem(item);
 
     await (this._isAnimated
       ? new Promise((resolve) => window.requestAnimationFrame(resolve))

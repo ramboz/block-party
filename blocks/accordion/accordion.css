@@ -30,6 +30,7 @@
 .accordion details summary::before {
   display: inline-block;
   content: '';
+  margin-left: .5rem;
   border: .5em solid transparent;
   border-left-color: black;
   transition: transform .3s ease-in-out;
