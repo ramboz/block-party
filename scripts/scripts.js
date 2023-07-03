@@ -11,9 +11,9 @@ import {
   waitForLCP,
   loadBlocks,
   loadCSS,
+  decorateBlock,
 } from './lib-franklin.js';
 import '../../scripts/lib-aria.js';
-
 
 const LCP_BLOCKS = []; // add your LCP blocks to the list
 
@@ -30,6 +30,36 @@ function buildHeroBlock(main) {
     section.append(buildBlock('hero', { elems: [picture, h1] }));
     main.prepend(section);
   }
+}
+
+function buildSectionAccordion(main) {
+  main.querySelectorAll(':not(.section[data-accordion]) + .section[data-accordion]').forEach(async (el) => {
+    const section = document.createElement('div');
+    section.classList.add('section');
+    section.innerHTML = '<div><div class="accordion"></div></div>';
+    el.before(section);
+    const block = section.firstElementChild.firstElementChild;
+    let panel = el;
+    while (panel?.dataset.accordion) {
+      const heading = document.createElement('div');
+      heading.innerHTML = `<div>${panel.dataset.accordion}</div>`;
+      block.append(heading);
+      const div = document.createElement('div');
+      div.innerHTML = panel.innerHTML;
+      block.append(div);
+      const next = panel.nextElementSibling;
+      panel.remove();
+      panel = next;
+    }
+    const accordion = document.createElement('hlx-aria-accordion');
+    accordion.toggleAttribute('is-animated', true);
+    accordion.toggleAttribute('single', el.dataset.singleItem || false);
+    accordion.toggleAttribute('with-controls', el.dataset.withControls || false);
+    accordion.onAnimate = (item, open) => {
+      item.querySelector('summary + div').style.gridTemplateRows = open ? '1fr' : '0fr';
+    };
+    await accordion.decorate(block);
+  });
 }
 
 /**
@@ -69,6 +99,7 @@ async function loadEager(doc) {
   const main = doc.querySelector('main');
   if (main) {
     decorateMain(main);
+    buildSectionAccordion(main);
     document.body.classList.add('appear');
     await waitForLCP(LCP_BLOCKS);
   }

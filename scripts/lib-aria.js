@@ -1,4 +1,4 @@
-import { toCamelCase } from './lib-franklin.js';
+import { decorateBlock, toCamelCase } from './lib-franklin.js';
 
 export function getId(prefix = 'hlx') {
   return `${prefix}-${Math.random().toString(32).substring(2)}`;
