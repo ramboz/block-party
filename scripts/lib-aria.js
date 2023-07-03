@@ -6,6 +6,17 @@ export function getId(prefix = 'hlx') {
 
 class AriaWidget extends HTMLElement {
 
+  connectedCallback() {
+    this.attachListeners && this.attachListeners();
+    this.constructor.observedAttributes.forEach((attr) => {
+      this[`_${toCamelCase(attr)}`] = !!this.attributes[attr];
+    });
+  }
+
+  dicsconnectedCallback() {
+    this.detachListeners && this.detachListeners();
+  }
+
   decorate(block) {
     const html = block.innerHTML;
     block.replaceWith(this);
@@ -40,17 +51,6 @@ class AriaWidget extends HTMLElement {
 class AriaAccordion extends AriaWidget {
   static get observedAttributes() { return ['is-animated', 'single', 'with-controls']; }
 
-  connectedCallback() {
-    this.attachListeners();
-    AriaAccordion.observedAttributes.forEach((attr) => {
-      this[`_${toCamelCase(attr)}`] = !!this.attributes[attr];
-    });
-  }
-
-  dicsconnectedCallback() {
-    this.detachListeners();
-  }
-
   attributeChangedCallback(attr, oldValue, newValue) {
     this[`_${toCamelCase(attr)}`] = newValue !== 'false';
   }
@@ -79,10 +79,6 @@ class AriaAccordion extends AriaWidget {
       }
     };
     this.addEventListener('click', this._clickListener);
-  }
-
-  adoptedCallback() {
-    console.log('adopted');
   }
 
   detachListeners() {
