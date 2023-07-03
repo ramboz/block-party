@@ -1,0 +1,45 @@
+.accordion > hlx-aria-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.accordion [role="group"] {
+  display: flex;
+  gap: 1rem;
+  justify-content: end;
+}
+
+.accordion details > div {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: all .3s ease-in-out;
+}
+
+.accordion details > div > div {
+  min-height: 0;
+}
+
+.accordion summary {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.accordion details summary::before {
+  display: inline-block;
+  content: '';
+  border: .5em solid transparent;
+  border-left-color: black;
+  transition: transform .3s ease-in-out;
+}
+
+.accordion details[open] summary::before {
+  transform: translate(-.25rem, .375rem) rotate(90deg);
+}
+
+.accordion summary img {
+  display: block;
+  width: 4rem;
+}

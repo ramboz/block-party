@@ -12,6 +12,8 @@ import {
   loadBlocks,
   loadCSS,
 } from './lib-franklin.js';
+import '../../scripts/lib-aria.js';
+
 
 const LCP_BLOCKS = []; // add your LCP blocks to the list
 
