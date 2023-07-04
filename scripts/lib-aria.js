@@ -8,7 +8,7 @@ class AriaWidget extends HTMLElement {
 
   connectedCallback() {
     this.attachListeners && this.attachListeners();
-    this.constructor.observedAttributes.forEach((attr) => {
+    this.constructor.observedAttributes?.forEach((attr) => {
       this[`_${toCamelCase(attr)}`] = !!this.attributes[attr];
     });
   }
@@ -35,7 +35,7 @@ class AriaWidget extends HTMLElement {
     }
   }
 
-  set desciption(stringOrEl) {
+  set description(stringOrEl) {
     if (typeof stringOrEl === 'string') {
       this.setAttribute('aria-description', stringOrEl);
     } else {
@@ -183,6 +183,28 @@ class AriaAccordion extends AriaWidget {
   }
 }
 customElements.define('hlx-aria-accordion', AriaAccordion);
+
+class AriaBreadcrumb extends AriaWidget {
+  decorate(block) {
+    this.setAttribute('role', 'navigation');
+    const anchors = block.querySelectorAll('a[href]');
+    const ol = document.createElement('ol');
+    anchors.forEach((a) => {
+      const li = document.createElement('li');
+      a.removeAttribute('class');
+      if (new URL(a.href).pathname === window.location.pathname) {
+        a.setAttribute('aria-current', 'page');
+      }
+      li.append(a);
+      ol.append(li);
+    })
+    this.append(ol);
+    block.innerHTML = '';
+    block.append(this);
+    return this;
+  }
+}
+customElements.define('hlx-aria-breadcrumb', AriaBreadcrumb);
 
 class AriaTabs extends AriaWidget {
   static get observedAttributes() { return ['auto-select', 'is-animated', 'is-vertical']; }

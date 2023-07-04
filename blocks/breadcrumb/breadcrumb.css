@@ -1,0 +1,28 @@
+hlx-aria-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 1rem;
+}
+
+hlx-aria-breadcrumb li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+hlx-aria-breadcrumb li:not(:first-child)::before {
+  content: '>';
+  display: inline-block;
+}
+
+hlx-aria-breadcrumb [aria-current="page"] {
+  cursor: default;
+  pointer-events: none;
+}
+
+hlx-aria-breadcrumb [aria-current="page"]:hover {
+  text-decoration: none;
+}
