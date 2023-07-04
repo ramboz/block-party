@@ -328,6 +328,7 @@ class AriaTabs extends AriaWidget {
   }
 
   focusItem(item) {
+    this.tablist.querySelector('[tabindex="0"]')?.setAttribute('tabindex', -1);
     item.setAttribute('tabindex', 0);
     item.focus();
   }
