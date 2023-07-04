@@ -1,0 +1,71 @@
+hlx-aria-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+hlx-aria-tabs[is-vertical] {
+  flex-direction: row;
+}
+
+[role="tab"]:any-link {
+  text-underline-offset: .5rem;
+  text-decoration-thickness: 4px;
+}
+
+[role="tab"][aria-selected="true"] {
+  font-weight: bold;
+  text-decoration-line: underline;
+}
+
+[role="tablist"] {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 1rem;
+  border-bottom: 1px solid lightgray;
+}
+
+[role="tablist"][aria-orientation="vertical"] {
+  flex-direction: column;
+}
+
+[role="tabpanel"] {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: all .3s linear;
+}
+
+[role="tabpanel"][hidden] {
+  display: none;
+}
+
+[role="tabpanel"] > div {
+  min-height: 0;
+}
+
+[role="tabpanel"] :is(h1,h2,h3,h4,h5,h6):first-child {
+  margin-top: 0;
+}
+
+[is-vertical] [role="tablist"] {
+  border-bottom: none;
+  border-right: 1px solid lightgray;
+  min-width: 4rem;
+}
+
+[is-vertical] [role="tabpanel"] {
+  grid-template-rows: auto;
+  grid-template-columns: 1fr;
+}
+
+[is-vertical] [role="tabpanel"][hidden] {
+  grid-template-rows: 0fr;
+  grid-template-columns: auto;
+}
+
+[is-vertical] [role="tabpanel"] > div {
+  min-width: 0;
+}

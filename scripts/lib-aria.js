@@ -182,9 +182,189 @@ class AriaAccordion extends AriaWidget {
     }
   }
 }
-
 customElements.define('hlx-aria-accordion', AriaAccordion);
+
+class AriaTabs extends AriaWidget {
+  static get observedAttributes() { return ['auto-select', 'is-animated', 'is-vertical']; }
+
+  attributeChangedCallback(attr, oldValue, newValue) {
+    this[`_${toCamelCase(attr)}`] = newValue !== 'false';
+  }
+
+  attachListeners() {
+    this._clickListener = async (ev) => {
+      const tab = ev.target.closest('[role="tab"]');
+      if (!tab) {
+        return;
+      }
+      ev.preventDefault();
+      if (tab.getAttribute('aria-selected') !== 'true') {
+        this.selectItem(tab);
+      }
+    };
+    this._keyListener = async (ev) => {
+      const tab = ev.target.closest('[role="tab"]');
+      if (!tab) {
+        return;
+      }
+      const tabs = [...this.tablist.querySelectorAll('[role="tab"]')];
+      const index = tabs.indexOf(tab);
+      const fn = this._autoSelect ? this.selectItem : this.focusItem;
+      switch (ev.key) {
+        case 'Home':
+          ev.preventDefault();
+          fn.call(this, tabs[0]);
+          break;
+        case 'ArrowLeft':
+          if (!this._isVertical) {
+            ev.preventDefault();
+            fn.call(this, index ? tabs[index - 1] : tabs[tabs.length - 1]);
+          }
+          break;
+        case 'ArrowRight':
+          if (!this._isVertical) {
+            ev.preventDefault();
+            fn.call(this, (index === tabs.length - 1) ? tabs[0] : tabs[index + 1]);
+          }
+          break;
+        case 'ArrowUp':
+          if (this._isVertical) {
+            ev.preventDefault();
+            fn.call(this, index ? tabs[index - 1] : tabs[tabs.length - 1]);
+          }
+          break;
+        case 'ArrowDown':
+          if (this._isVertical) {
+            ev.preventDefault();
+            fn.call(this, (index === tabs.length - 1) ? tabs[0] : tabs[index + 1]);
+          }
+          break;
+        case 'End':
+          ev.preventDefault();
+          fn.call(this, tabs[tabs.length - 1]);
+          break;
+        default:
+          break;
+      }
+    };
+    this.addEventListener('click', this._clickListener);
+    this.addEventListener('keydown', this._keyListener);
+  }
+
+  detachListeners() {
+    this.removeEventListener(this._clickListener);
+    this.removeEventListener(this._keyListener);
+  }
+
+  decorate(block) {
+    if (!block.childElementCount) {
+      throw new Error('A tabs widget needs at least 1 item');
+    }
+    this.tablist = document.createElement('ul');
+    this.tablist.setAttribute('role', 'tablist');
+    this.tablist.setAttribute('aria-orientation', this._isVertical ? 'vertical' : 'horizontal');
+    this.append(this.tablist);
+    this.tabpanels = document.createElement('div');
+    this.append(this.tabpanels);
+    if (block.firstElementChild.childElementCount === 1) {
+      let tabs = block.firstElementChild.firstElementChild.querySelectorAll('a');
+      let tabPanels = [...block.children].slice(tabs.length ? 1 : 0);
+      if (!tabs.length) {
+        tabs = tabPanels.map((panel) => {
+          const a = document.createElement('a');
+          const heading = panel.querySelector('h1,h2,h3,h4,h5,h6');
+          a.href = `#${heading.id}`;
+          a.innerHTML = heading.innerHTML;
+          return a;
+        });
+      }
+      if (!tabPanels.length) {
+        const section = block.closest('.section');
+        tabPanels = [];
+        let next = section.nextElementSibling;
+        while (next?.dataset.tabPanel) {
+          tabPanels.push(next.firstElementChild);
+          next = next.nextElementSibling;
+        }
+      }
+      if (tabPanels.length !== tabs.length) {
+        throw new Error('Inconsistent number of tabs and tab panels.');
+      }
+      tabs.forEach((tab, i) => {
+        const div = document.createElement('div');
+        div.append(tabPanels[i]);
+        this.addItem(tab, div);
+      });
+    }
+    block.innerHTML = '';
+    block.append(this);
+    this.selectItem(this.querySelector('[role="tab"]'));
+    return this;
+  }
+
+  addItem(titleEl, panelEl) {
+    const li = document.createElement('li');
+    li.setAttribute('role', 'presentation');
+    titleEl.setAttribute('role', 'tab');
+    titleEl.setAttribute('tabindex', -1);
+    if (!titleEl.id) {
+      titleEl.id = getId('tab');
+    }
+    li.append(titleEl);
+    this.tablist.append(li);
+    panelEl.setAttribute('role', 'tabpanel');
+    if (!panelEl.id) {
+      panelEl.id = getId('tabpanel');
+    }
+    titleEl.setAttribute('aria-controls', panelEl.id);
+    panelEl.setAttribute('aria-labelledby', titleEl.id);
+    panelEl.toggleAttribute('hidden', true);
+    this.tabpanels.append(panelEl);
+  }
+
+  removeItem(item) {
+    this.querySelector(`[aria-labbeledby=${item.id}]`).remove();
+    item.remove();
+  }
+
+  focusItem(item) {
+    item.setAttribute('tabindex', 0);
+    item.focus();
+  }
+
+  async selectItem(item) {
+    this.focusItem(item);
+    
+    await (this._isAnimated
+      ? new Promise((resolve) => window.requestAnimationFrame(resolve))
+      : Promise.resolve());
+    const currentTab = this.querySelector('[role="tab"][aria-selected="true"]');
+    const currentPanel = this.querySelector('[role="tabpanel"]:not([hidden])');
+    if (currentTab && currentPanel) {
+      currentTab.setAttribute('aria-selected', false);
+      if (this._isAnimated) {
+        currentPanel.addEventListener('transitionend', async () => {
+          currentPanel.toggleAttribute('hidden', true);
+        }, { once: true });
+        this.onAnimate(currentTab, false);
+      } else {
+        currentPanel.toggleAttribute('hidden', true);
+      }
+    }
+
+    const newPanel = this.querySelector(`#${item.getAttribute('aria-controls')}`);
+    item.setAttribute('aria-selected', true);
+    newPanel.toggleAttribute('hidden', false);
+    if (this._isAnimated) {
+      window.requestAnimationFrame(() => {
+        this.onAnimate(item, true);
+      });
+    }
+  }
+}
+customElements.define('hlx-aria-tabs', AriaTabs);
 
 export default {
   Accordion: AriaAccordion,
+  Tabs: AriaTabs,
 }
