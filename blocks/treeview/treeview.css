@@ -17,8 +17,8 @@
   grid-template:
     'toggle item' min-content
     '. group' 0fr / min-content 1fr;
+  gap: 0 .25rem;
   align-items: center;
-  overflow-y: hidden;
   transition: all .3s ease-in-out .15s;
 }
 
@@ -47,6 +47,7 @@
 
 [role="tree"] [role="treeitem"][aria-expanded] + button[aria-controls],
 [role="tree"] span[role="treeitem"][aria-expanded]::before {
+  position: relative;
   display: inline-block;
   content: '';
   border: .5rem solid;
@@ -55,9 +56,17 @@
   height: 0;
   margin: 0;
   padding: 0;
+  left: .25rem;
+  transition: all .3s ease-in-out;
+}
+
+[role="tree"] span[role="treeitem"][aria-expanded]::before {
+  padding-right: .25rem;
 }
 
 [role="tree"] [role="treeitem"][aria-expanded="true"] + button[aria-controls],
 [role="tree"] span[role="treeitem"][aria-expanded="true"]::before {
-  border-color: var(--link-color) transparent transparent transparent;
+  left: 0;
+  top: .25rem;
+  rotate: 90deg;
 }

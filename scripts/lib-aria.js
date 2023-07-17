@@ -515,34 +515,13 @@ class AriaTreeView extends AriaWidget {
         if (group) span.after(group);
       }
     });
-    const links = this.root.querySelectorAll('li>a,li>span');
-    (links.length ? links : listItems).forEach((item) => {
-      item.setAttribute('role', 'treeitem');
-      if (!item.id) {
-        item.id = getId('treeitem');
+    this.root.querySelectorAll('li>a,li>span').forEach((item) => {
+      const group = item.closest('[role="group"]');
+      let parentItem;
+      if (group) {
+        parentItem = group.parentElement.firstElementChild;
       }
-      item.setAttribute('tabindex', -1);
-      if (this._isSelectable) {
-        item.setAttribute('aria-selected', false);
-      }
-      if (this._isMultiselectable) {
-        item.setAttribute('aria-checked', false);
-      }
-      if (item.nextElementSibling && ['UL', 'OL'].includes(item.nextElementSibling.tagName)) {
-        if (!item.nextElementSibling.id) {
-          item.nextElementSibling.id = getId('group');
-          item.nextElementSibling.toggleAttribute('hidden', true);
-        }
-        item.nextElementSibling.setAttribute('aria-labelledby', item.id);
-        item.setAttribute('aria-expanded', 'false');
-        item.setAttribute('aria-owns', item.nextElementSibling.id);
-        if (item.tagName === 'A') {
-          const toggle = document.createElement('button');
-          toggle.setAttribute('aria-controls', item.id);
-          toggle.setAttribute('tabindex', -1);
-          item.after(toggle);
-        }
-      }
+      this.addItem(item, parentItem);
     });
 
     block.innerHTML = '';
@@ -562,11 +541,46 @@ class AriaTreeView extends AriaWidget {
     } else {
       parentGroup = this;
     }
-    parentGroup.append(item);
+    item.setAttribute('role', 'treeitem');
+    if (!item.id) {
+      item.id = getId('treeitem');
+    }
+    item.setAttribute('tabindex', -1);
+    if (this._isSelectable) {
+      item.setAttribute('aria-selected', false);
+    }
+    if (this._isMultiselectable) {
+      item.setAttribute('aria-checked', false);
+    }
+    if (!item.closest('[role="tree"]')) {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'none');
+      li.append(item);
+      parentGroup.append(li);
+    }
   }
 
+  // eslint-disable-next-line class-methods-use-this
   addGroup(item) {
-
+    let group;
+    if (['UL', 'OL'].includes(item.nextElementSibling.tagName)) {
+      group = item.nextElementSibling;
+    } else {
+      group = document.createElement('ul');
+      item.after(group);
+    }
+    group.id = getId('group');
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-labelledby', item.id);
+    group.toggleAttribute('hidden', true);
+    item.setAttribute('aria-expanded', 'false');
+    item.setAttribute('aria-owns', group.id);
+    if (item.tagName === 'A') {
+      const toggle = document.createElement('button');
+      toggle.setAttribute('aria-controls', item.id);
+      toggle.setAttribute('tabindex', -1);
+      item.after(toggle);
+    }
   }
 
   // eslint-disable-next-line class-methods-use-this
