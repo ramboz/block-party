@@ -27,23 +27,23 @@ class AriaWidget extends HTMLElement {
 
   set label(stringOrEl) {
     if (typeof stringOrEl === 'string') {
-      this.setAttribute('aria-label', stringOrEl);
+      (this.root || this).setAttribute('aria-label', stringOrEl);
     } else {
       if (!stringOrEl.id) {
         stringOrEl.id = getId();
       }
-      this.setAttribute('aria-labelledby', stringOrEl.id);
+      (this.root || this).setAttribute('aria-labelledby', stringOrEl.id);
     }
   }
 
   set description(stringOrEl) {
     if (typeof stringOrEl === 'string') {
-      this.setAttribute('aria-description', stringOrEl);
+      (this.root || this).setAttribute('aria-description', stringOrEl);
     } else {
       if (!stringOrEl.id) {
         stringOrEl.id = getId();
       }
-      this.setAttribute('aria-describedby', stringOrEl.id);
+      (this.root || this).setAttribute('aria-describedby', stringOrEl.id);
     }
   }
 }
@@ -539,6 +539,13 @@ class AriaTreeView extends AriaWidget {
       }
       parentGroup = this.querySelector(`#${parentItem.getAttribute('aria-owns')}`);
     } else {
+      if (!this.root) {
+        this.root = document.createElement('ul');
+        this.root.setAttribute('role', 'tree');
+        this.root.setAttribute('aria-multiselectable', this._isMultiselectable || 'false');
+        this.root.setAttribute('aria-orientation', 'vertical');
+        this.append(this.root);
+      }
       parentGroup = this;
     }
     item.setAttribute('role', 'treeitem');
@@ -668,6 +675,7 @@ customElements.define('hlx-aria-treeview', AriaTreeView);
 
 export default {
   Accordion: AriaAccordion,
+  Breadcrumb: AriaBreadcrumb,
   Tabs: AriaTabs,
   TreeView: AriaTreeView,
 };
