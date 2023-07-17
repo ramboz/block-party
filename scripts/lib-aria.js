@@ -1,20 +1,21 @@
-import { decorateBlock, toCamelCase } from './lib-franklin.js';
+/* eslint-disable no-underscore-dangle */
+// eslint-disable-next-line max-classes-per-file
+import { toCamelCase } from './lib-franklin.js';
 
 export function getId(prefix = 'hlx') {
   return `${prefix}-${Math.random().toString(32).substring(2)}`;
 }
 
 class AriaWidget extends HTMLElement {
-
   connectedCallback() {
-    this.attachListeners && this.attachListeners();
+    if (this.attachListeners) this.attachListeners();
     this.constructor.observedAttributes?.forEach((attr) => {
       this[`_${toCamelCase(attr)}`] = !!this.attributes[attr];
     });
   }
 
   dicsconnectedCallback() {
-    this.detachListeners && this.detachListeners();
+    if (this.attachListeners) this.detachListeners();
   }
 
   decorate(block) {
@@ -45,7 +46,6 @@ class AriaWidget extends HTMLElement {
       this.setAttribute('aria-describedby', stringOrEl.id);
     }
   }
-
 }
 
 class AriaAccordion extends AriaWidget {
@@ -124,7 +124,7 @@ class AriaAccordion extends AriaWidget {
       const collapse = document.createElement('button');
       collapse.setAttribute('aria-controls', ids);
       collapse.dataset.role = 'collapse';
-      collapse.textContent =  this.attributes.collapseAllLabel?.value || 'Collapse All';
+      collapse.textContent = this.attributes.collapseAllLabel?.value || 'Collapse All';
       collapse.disabled = true;
       div.append(collapse);
       this.prepend(div);
@@ -148,6 +148,7 @@ class AriaAccordion extends AriaWidget {
     this.append(details);
   }
 
+  // eslint-disable-next-line class-methods-use-this
   removeItem(item) {
     item.closest('details').remove();
   }
@@ -160,7 +161,7 @@ class AriaAccordion extends AriaWidget {
     }
 
     await (this._isAnimated
-      ? new Promise((resolve) => window.requestAnimationFrame(resolve))
+      ? new Promise((resolve) => { window.requestAnimationFrame(resolve); })
       : Promise.resolve());
     if (!state && this._isAnimated) {
       item.addEventListener('transitionend', async () => {
@@ -188,20 +189,24 @@ class AriaBreadcrumb extends AriaWidget {
   decorate(block) {
     this.setAttribute('role', 'navigation');
     const anchors = block.querySelectorAll('a[href]');
-    const ol = document.createElement('ol');
+    this.list = document.createElement('ol');
     anchors.forEach((a) => {
-      const li = document.createElement('li');
-      a.removeAttribute('class');
-      if (new URL(a.href).pathname === window.location.pathname) {
-        a.setAttribute('aria-current', 'page');
-      }
-      li.append(a);
-      ol.append(li);
-    })
-    this.append(ol);
+      this.addItem(a);
+    });
+    this.append(this.list);
     block.innerHTML = '';
     block.append(this);
     return this;
+  }
+
+  addItem(anchor) {
+    const li = document.createElement('li');
+    anchor.removeAttribute('class');
+    if (new URL(anchor.href).pathname === window.location.pathname) {
+      anchor.setAttribute('aria-current', 'page');
+    }
+    li.append(anchor);
+    this.list.append(li);
   }
 }
 customElements.define('hlx-aria-breadcrumb', AriaBreadcrumb);
@@ -357,9 +362,8 @@ class AriaTabs extends AriaWidget {
 
   async selectItem(item) {
     this.focusItem(item);
-    
     await (this._isAnimated
-      ? new Promise((resolve) => window.requestAnimationFrame(resolve))
+      ? new Promise((resolve) => { window.requestAnimationFrame(resolve); })
       : Promise.resolve());
     const currentTab = this.querySelector('[role="tab"][aria-selected="true"]');
     const currentPanel = this.querySelector('[role="tabpanel"]:not([hidden])');
@@ -387,7 +391,269 @@ class AriaTabs extends AriaWidget {
 }
 customElements.define('hlx-aria-tabs', AriaTabs);
 
+class AriaTreeView extends AriaWidget {
+  static get observedAttributes() { return ['is-animated', 'is-selectable', 'is-multiselectable', 'with-controls']; }
+
+  attributeChangedCallback(attr, oldValue, newValue) {
+    this[`_${toCamelCase(attr)}`] = newValue !== 'false';
+  }
+
+  attachListeners() {
+    this._clickListener = async (ev) => {
+      const toggle = ev.target.closest('button[aria-controls]');
+      const item = ev.target.closest('span[role="treeitem"]');
+      if (!toggle && !item) {
+        return;
+      }
+      ev.preventDefault();
+      if (toggle) {
+        const itemId = toggle.getAttribute('aria-controls');
+        this.toggleItem(this.querySelector(`#${itemId}`));
+      }
+      if (item && this._isSelectable) {
+        this.toggleSelection(item, true);
+      } else if (item && this._isMultiselectable) {
+        this.toggleSelection(item);
+      }
+      if (item) {
+        this.toggleItem(item);
+      }
+    };
+    this._keyListener = async (ev) => {
+      const item = ev.target.closest('[role="treeitem"]');
+      if (!item) {
+        return;
+      }
+      const focusables = [...this.querySelectorAll('[role="treeitem"]')]
+        .filter((i) => {
+          const group = i.closest('[role="group"]');
+          if (!group) {
+            return true;
+          }
+          return this.querySelector(`[aria-owns="${group.id}"]`).getAttribute('aria-expanded') === 'true';
+        });
+      const index = focusables.indexOf(item);
+      const group = ev.target.closest('[role="group"],[role="tree"]');
+      switch (ev.key) {
+        case 'ArrowUp':
+          ev.preventDefault();
+          this.focusItem(index ? focusables[index - 1] : focusables[focusables.length - 1]);
+          break;
+        case 'ArrowDown':
+          ev.preventDefault();
+          this.focusItem(index === focusables.length - 1 ? focusables[0] : focusables[index + 1]);
+          break;
+        case 'ArrowRight': {
+          ev.preventDefault();
+          if (item.getAttribute('aria-expanded') === 'false') {
+            this.toggleItem(item, true);
+          } else if (item.getAttribute('aria-owns')) {
+            this.focusItem(focusables[index + 1]);
+          }
+          break;
+        }
+        case 'ArrowLeft':
+          ev.preventDefault();
+          if (item.getAttribute('aria-expanded') === 'true') {
+            this.toggleItem(item, false);
+          } else if (group?.id) {
+            this.focusItem(this.querySelector(`[aria-owns="${group.id}`));
+          }
+          break;
+        case 'Home':
+          ev.preventDefault();
+          this.focusItem(focusables[0]);
+          break;
+        case 'End':
+          ev.preventDefault();
+          this.focusItem(focusables[focusables.length - 1]);
+          break;
+        case ' ':
+          if (this._isSelectable || this._isMultiselectable) {
+            ev.preventDefault();
+            this.toggleSelection(item);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+    this.addEventListener('click', this._clickListener);
+    this.addEventListener('keydown', this._keyListener);
+  }
+
+  detachListeners() {
+    this.removeEventListener(this._clickListener);
+    this.removeEventListener(this._keyListener);
+  }
+
+  decorate(block) {
+    if (!block.childElementCount) {
+      throw new Error('A tree view widget needs at least 1 item');
+    }
+
+    this.root = block.querySelector('ul,ol');
+    this.root.setAttribute('role', 'tree');
+    this.root.setAttribute('aria-multiselectable', this._isMultiselectable || 'false');
+    this.root.setAttribute('aria-orientation', 'vertical');
+    this.append(this.root);
+
+    const groups = this.root.querySelectorAll('ul,ol');
+    groups.forEach((group) => {
+      group.setAttribute('role', 'group');
+    });
+    const listItems = this.root.querySelectorAll('li');
+    listItems.forEach((li) => {
+      li.setAttribute('role', 'none');
+      if (!li.firstElementChild || ['UL', 'OL'].includes(li.firstElementChild.tagName)) {
+        const group = li.querySelector('ul,ol');
+        if (group) group.remove();
+        const span = document.createElement('span');
+        span.innerHTML = li.innerHTML;
+        li.innerHTML = '';
+        li.append(span);
+        if (group) span.after(group);
+      }
+    });
+    const links = this.root.querySelectorAll('li>a,li>span');
+    (links.length ? links : listItems).forEach((item) => {
+      item.setAttribute('role', 'treeitem');
+      if (!item.id) {
+        item.id = getId('treeitem');
+      }
+      item.setAttribute('tabindex', -1);
+      if (this._isSelectable) {
+        item.setAttribute('aria-selected', false);
+      }
+      if (this._isMultiselectable) {
+        item.setAttribute('aria-checked', false);
+      }
+      if (item.nextElementSibling && ['UL', 'OL'].includes(item.nextElementSibling.tagName)) {
+        if (!item.nextElementSibling.id) {
+          item.nextElementSibling.id = getId('group');
+          item.nextElementSibling.toggleAttribute('hidden', true);
+        }
+        item.nextElementSibling.setAttribute('aria-labelledby', item.id);
+        item.setAttribute('aria-expanded', 'false');
+        item.setAttribute('aria-owns', item.nextElementSibling.id);
+        if (item.tagName === 'A') {
+          const toggle = document.createElement('button');
+          toggle.setAttribute('aria-controls', item.id);
+          toggle.setAttribute('tabindex', -1);
+          item.after(toggle);
+        }
+      }
+    });
+
+    block.innerHTML = '';
+    block.append(this);
+
+    this.focusItem(this.root.querySelector('[role="treeitem"]'));
+    return this;
+  }
+
+  addItem(item, parentItem) {
+    let parentGroup;
+    if (parentItem) {
+      if (!parentItem.getAttribute('aria-owns')) {
+        this.addGroup(parentItem);
+      }
+      parentGroup = this.querySelector(`#${parentItem.getAttribute('aria-owns')}`);
+    } else {
+      parentGroup = this;
+    }
+    parentGroup.append(item);
+  }
+
+  addGroup(item) {
+
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  removeItem(item) {
+    item.closest('li').remove();
+  }
+
+  focusItem(item) {
+    const oldItem = this.querySelector('[role="treeitem"][tabindex="0"]');
+    if (oldItem) {
+      oldItem.setAttribute('tabindex', -1);
+    }
+    let group = item.closest('[role="group"]');
+    while (group) {
+      const parentItem = this.querySelector(`[aria-owns="${group.id}"`);
+      if (parentItem.getAttribute('aria-expanded') === 'false') {
+        this.toggleItem(parentItem, true);
+      }
+      group = parentItem.closest('[role="group"]');
+    }
+    item.setAttribute('tabindex', 0);
+    item.focus();
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  async toggleItem(item, status) {
+    if (!item.getAttribute('aria-expanded')) {
+      return;
+    }
+    const expanded = status === undefined
+      ? item.getAttribute('aria-expanded') === 'false'
+      : status;
+
+    await (this._isAnimated
+      ? new Promise((resolve) => { window.requestAnimationFrame(resolve); })
+      : Promise.resolve());
+
+    const groupId = item.getAttribute('aria-owns');
+    const group = groupId ? this.root.querySelector(`#${groupId}`) : null;
+    if (groupId) {
+      this.root.querySelector(`#${groupId}`)
+        .querySelectorAll('[role="treeitem"][aria-expanded="true"]').forEach((i) => {
+          this.toggleItem(i, false);
+        });
+    }
+
+    if (this._isAnimated) {
+      if (expanded) {
+        item.setAttribute('aria-expanded', true);
+        group.toggleAttribute('hidden', false);
+        window.requestAnimationFrame(() => {
+          this.onAnimate(item, true);
+        });
+      } else {
+        (group || this.root).addEventListener('transitionend', async () => {
+          item.setAttribute('aria-expanded', false);
+          group.toggleAttribute('hidden', true);
+        }, { once: true });
+        this.onAnimate(item, false);
+      }
+    } else {
+      item.setAttribute('aria-expanded', expanded);
+      group.toggleAttribute('hidden', !expanded);
+    }
+  }
+
+  async toggleSelection(item, status) {
+    this.focusItem(item);
+
+    const attribute = this._isMultiselectable ? 'aria-checked' : 'aria-selected';
+    const selected = status === undefined
+      ? item.getAttribute(attribute) === 'false'
+      : status;
+    if (this._isSelectable) {
+      const selectedItem = this.querySelector('[role="treeitem"][aria-selected="true"]');
+      if (selectedItem && item !== selectedItem) {
+        await this.toggleSelection(selectedItem, false);
+      }
+    }
+
+    item.setAttribute(attribute, selected);
+  }
+}
+customElements.define('hlx-aria-treeview', AriaTreeView);
+
 export default {
   Accordion: AriaAccordion,
   Tabs: AriaTabs,
-}
+  TreeView: AriaTreeView,
+};
