@@ -398,6 +398,11 @@ class AriaTreeView extends AriaWidget {
     this[`_${toCamelCase(attr)}`] = newValue !== 'false';
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    this.#addRoot();
+  }
+
   attachListeners() {
     this._clickListener = async (ev) => {
       const toggle = ev.target.closest('button[aria-controls]');
@@ -468,6 +473,14 @@ class AriaTreeView extends AriaWidget {
           ev.preventDefault();
           this.focusItem(focusables[focusables.length - 1]);
           break;
+        case 'Enter':
+          if (this._isSelectable || this._isMultiselectable) {
+            ev.preventDefault();
+            this.toggleSelection(item);
+          } else if (item.getAttribute('aria-expanded')) {
+            this.toggleItem(item);
+          }
+          break;
         case ' ':
           if (this._isSelectable || this._isMultiselectable) {
             ev.preventDefault();
@@ -493,15 +506,9 @@ class AriaTreeView extends AriaWidget {
     }
 
     this.root = block.querySelector('ul,ol');
-    this.root.setAttribute('role', 'tree');
-    this.root.setAttribute('aria-multiselectable', this._isMultiselectable || 'false');
-    this.root.setAttribute('aria-orientation', 'vertical');
     this.append(this.root);
+    this.#addRoot();
 
-    const groups = this.root.querySelectorAll('ul,ol');
-    groups.forEach((group) => {
-      group.setAttribute('role', 'group');
-    });
     const listItems = this.root.querySelectorAll('li');
     listItems.forEach((li) => {
       li.setAttribute('role', 'none');
@@ -516,9 +523,9 @@ class AriaTreeView extends AriaWidget {
       }
     });
     this.root.querySelectorAll('li>a,li>span').forEach((item) => {
-      const group = item.closest('[role="group"]');
+      const group = item.closest('ul,ol');
       let parentItem;
-      if (group) {
+      if (group && group !== this.root) {
         parentItem = group.parentElement.firstElementChild;
       }
       this.addItem(item, parentItem);
@@ -529,6 +536,16 @@ class AriaTreeView extends AriaWidget {
 
     this.focusItem(this.root.querySelector('[role="treeitem"]'));
     return this;
+  }
+
+  #addRoot() {
+    if (!this.root) {
+      this.root = document.createElement('ul');
+      this.append(this.root);
+    }
+    this.root.setAttribute('role', 'tree');
+    this.root.setAttribute('aria-multiselectable', this._isMultiselectable || 'false');
+    this.root.setAttribute('aria-orientation', 'vertical');
   }
 
   addItem(item, parentItem) {
@@ -546,7 +563,7 @@ class AriaTreeView extends AriaWidget {
         this.root.setAttribute('aria-orientation', 'vertical');
         this.append(this.root);
       }
-      parentGroup = this;
+      parentGroup = this.root;
     }
     item.setAttribute('role', 'treeitem');
     if (!item.id) {
